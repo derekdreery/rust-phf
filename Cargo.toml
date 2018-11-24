@@ -6,4 +6,9 @@ members = [
     "phf_generator",
     "phf_macros",
     "phf_shared",
+    "phf_bench",
 ]
+
+[profile.release]
+debug = true
+

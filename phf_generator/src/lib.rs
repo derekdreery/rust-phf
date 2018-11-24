@@ -8,6 +8,7 @@ const DEFAULT_LAMBDA: usize = 5;
 
 const FIXED_SEED: [u8; 16] = *b"\xec\x58\xdf\xa7\x46\x41\xaf\x52\xad\x0d\x16\xe7\x7d\x57\x66\x23";
 
+#[derive(Debug)]
 pub struct HashState {
     pub key: u64,
     pub disps: Vec<(u32, u32)>,
@@ -23,7 +24,7 @@ pub fn generate_hash<H: AsRef<[u8]>>(entries: &[H]) -> HashState {
     }
 }
 
-fn try_generate_hash<H: AsRef<[u8]>>(entries: &[H], rng: &mut XorShiftRng) -> Option<HashState> {
+pub fn try_generate_hash<H: AsRef<[u8]>>(entries: &[H], rng: &mut XorShiftRng) -> Option<HashState> {
     struct Bucket {
         idx: usize,
         keys: Vec<usize>,
