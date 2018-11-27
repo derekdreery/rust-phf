@@ -20,6 +20,8 @@ pub fn generate_hash<H: AsRef<[u8]>>(entries: &[H]) -> HashState {
     loop {
         if let Some(s) = try_generate_hash(entries, &mut rng) {
             return s;
+        } else {
+            println!("Finding hash failed, retrying");
         }
     }
 }
@@ -51,6 +53,7 @@ pub fn try_generate_hash<H: AsRef<[u8]>>(entries: &[H], rng: &mut XorShiftRng) -
         })
         .collect();
 
+    // We want the number of buckets to be rounded up.
     let buckets_len = (entries.len() + DEFAULT_LAMBDA - 1) / DEFAULT_LAMBDA;
     let mut buckets = (0..buckets_len)
         .map(|i| Bucket {
@@ -59,6 +62,7 @@ pub fn try_generate_hash<H: AsRef<[u8]>>(entries: &[H], rng: &mut XorShiftRng) -
         })
         .collect::<Vec<_>>();
 
+    // Sort into buckets by value of hash
     for (i, hash) in hashes.iter().enumerate() {
         buckets[(hash.g % (buckets_len as u32)) as usize]
             .keys
@@ -87,7 +91,12 @@ pub fn try_generate_hash<H: AsRef<[u8]>>(entries: &[H], rng: &mut XorShiftRng) -
     // chosen the right disps.
     let mut values_to_add = vec![];
 
+    // For debugging - see how many d1 and d2s it takes.
+    let mut track_attempts = vec![];
+    let mut track_count = 0u64;
+
     'buckets: for bucket in &buckets {
+        let mut attempts = 0u64;
         for d1 in 0..(table_len as u32) {
             'disps: for d2 in 0..(table_len as u32) {
                 values_to_add.clear();
@@ -97,6 +106,7 @@ pub fn try_generate_hash<H: AsRef<[u8]>>(entries: &[H], rng: &mut XorShiftRng) -
                     let idx = (phf_shared::displace(hashes[key].f1, hashes[key].f2, d1, d2)
                         % (table_len as u32)) as usize;
                     if map[idx].is_some() || try_map[idx] == generation {
+                        attempts += 1;
                         continue 'disps;
                     }
                     try_map[idx] = generation;
@@ -108,6 +118,9 @@ pub fn try_generate_hash<H: AsRef<[u8]>>(entries: &[H], rng: &mut XorShiftRng) -
                 for &(idx, key) in &values_to_add {
                     map[idx] = Some(key);
                 }
+                //println!("Bucket {} took {} attempts", track_count, attempts);
+                track_count += 1;
+                track_attempts.push(attempts);
                 continue 'buckets;
             }
         }
@@ -115,6 +128,10 @@ pub fn try_generate_hash<H: AsRef<[u8]>>(entries: &[H], rng: &mut XorShiftRng) -
         // Unable to find displacements for a bucket
         return None;
     }
+
+    let count = track_attempts.iter().count() as u64;
+    let sum = track_attempts.iter().sum::<u64>();
+    println!("count: {}, sum: {}, average: {}", count, sum, sum / count);
 
     Some(HashState {
         key: key,

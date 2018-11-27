@@ -7,6 +7,7 @@ members = [
     "phf_macros",
     "phf_shared",
     "phf_bench",
+    "phf_raw",
 ]
 
 [profile.release]
